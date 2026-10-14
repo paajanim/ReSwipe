@@ -5,9 +5,88 @@ export default function Index() {
     const [showModal, setShowModal] = useState(true);
     const [isSignUp, setIsSignUp] = useState(false);
 
+    const products = [
+        {
+            id: 1,
+            title: "Mountain Bike",
+            price: "€150",
+            location: "Hameenlinna",
+        },
+        {
+            id: 2,
+            title: "Office Chair",
+            price: "€35",
+            location: "Tampere",
+        },
+        {
+            id: 3,
+            title: "Study Desk",
+            price: "€50",
+            location: "Helsinki",
+        },
+    ];
+
+    const [currentIndex, setCurrentIndex] = useState(0);
+
+    const nextProduct = () => {
+        if (currentIndex < products.length - 1) {
+            setCurrentIndex(currentIndex + 1);
+        }
+    };
+
+    const handleLike = () => {
+        console.log("Liked:", products[currentIndex].title);
+        nextProduct();
+    };
+
+    const handleDislike = () => {
+        console.log("Disliked:", products[currentIndex].title);
+        nextProduct();
+    };
+
     return(
         <View style={styles.container}>
-            <Text style={styles.logo}>ReSwipe</Text>
+            {!showModal && (
+                <View style={styles.homeContainer}>
+                    <Text style={styles.logo}>ReSwipe</Text>
+
+                    <View style={styles.card}>
+                        <View style={styles.imagePlaceholder}>
+                            <Text style={{ fontSize: 20 }}>
+                                Product Image
+                            </Text>
+                        </View>
+
+                        <Text style={styles.productTitle}>
+                            {products[currentIndex].title}
+                        </Text>
+
+                        <Text style={styles.price}>
+                            {products[currentIndex].price}
+                        </Text>
+
+                        <Text style={styles.location}>
+                            {products[currentIndex].location}
+                        </Text>
+                    </View>
+
+                    <View style={styles.actions}>
+                        <TouchableOpacity
+                            style={styles.dislikeButton}
+                            onPress={handleDislike}
+                        >
+                            <Text style={styles.actionText}>❌</Text>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity
+                            style={styles.likeButton}
+                            onPress={handleLike}
+                        >
+                            <Text style={styles.actionText}>❤️</Text>
+                        </TouchableOpacity>
+                    </View>
+                </View>
+            )}
 
             <Modal visible={showModal} animationType="slide">
                 <View style={styles.overlay}>
@@ -129,5 +208,75 @@ export default function Index() {
             textAlign: "center",
             color: "#007AFF",
             marginTop: 15,
+        },
+
+        homeContainer: {
+            flex: 1,
+            width: "100%",
+            alignItems: "center",
+            justifyContent: "center",
+        },
+
+        card: {
+            width: "85%",
+            backgroundColor: "#FFF",
+            borderRadius: 20,
+            overflow: "hidden",
+            marginTop: 20,
+        },
+
+        imagePlaceholder: {
+            height: 300,
+            backgroundColor: "#EAEAEA",
+            justifyContent: "center",
+            alignItems: "center",
+        },
+
+        productTitle: {
+            fontSize: 24,
+            fontWeight: "bold",
+            marginTop: 10,
+            marginHorizontal: 15,
+        },
+
+        price: {
+            fontSize: 20,
+            marginHorizontal: 15,
+            marginTop: 5,
+        },
+
+        location: {
+            fontSize: 16,
+            marginHorizontal: 15,
+            marginBottom: 15,
+            marginTop: 5,
+        },
+
+        actions: {
+            flexDirection: "row",
+            marginTop: 25,
+            gap: 40,
+        },
+
+        dislikeButton: {
+            width: 70,
+            height: 70,
+            borderRadius: 35,
+            backgroundColor: "#FFFFFF",
+            justifyContent: "center",
+            alignItems: "center",
+        },
+
+        likeButton: {
+            width: 70,
+            height: 70,
+            borderRadius: 35,
+            backgroundColor: "#FFFFFF",
+            justifyContent: "center",
+            alignItems: "center",
+        },
+
+        actionText: {
+            fontSize: 28,
         },
     });
