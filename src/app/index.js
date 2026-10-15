@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { StyleSheet, Text, View, Modal, TextInput, TouchableOpacity } from "react-native";
+import { StyleSheet, Text, View, Modal, TextInput, TouchableOpacity, Image } from "react-native";
 
 export default function Index() {
     const [showModal, setShowModal] = useState(true);
@@ -11,27 +11,43 @@ export default function Index() {
             title: "Mountain Bike",
             price: "€150",
             location: "Hameenlinna",
+            image: require("../../assets/images/bike.png"),
         },
         {
             id: 2,
             title: "Office Chair",
-            price: "€35",
+            price: "€49",
             location: "Tampere",
+            image: require("../../assets/images/officeChair.png"),
         },
         {
             id: 3,
             title: "Study Desk",
-            price: "€50",
+            price: "€95",
             location: "Helsinki",
+            image: require("../../assets/images/studyDesk.png"),
+        },
+        {
+            id: 4,
+            title: "Vintage Lamp",
+            price: "€40",
+            location: "Tampere",
+            image: require("../../assets/images/vintageLamp.png"),
+        },
+        {
+            id: 5,
+            title: "Microwave",
+            price: "€35",
+            location: "Evo",
+            image: require("../../assets/images/microwave.png"),
         },
     ];
 
     const [currentIndex, setCurrentIndex] = useState(0);
 
     const nextProduct = () => {
-        if (currentIndex < products.length - 1) {
+        //if (currentIndex < products.length - 1) {
             setCurrentIndex(currentIndex + 1);
-        }
     };
 
     const handleLike = () => {
@@ -50,41 +66,54 @@ export default function Index() {
                 <View style={styles.homeContainer}>
                     <Text style={styles.logo}>ReSwipe</Text>
 
-                    <View style={styles.card}>
-                        <View style={styles.imagePlaceholder}>
-                            <Text style={{ fontSize: 20 }}>
-                                Product Image
+                    {currentIndex < products.length ? (
+                        <>
+                            <View style={styles.card}>
+                                <Image
+                                    source={products[currentIndex].image}
+                                    style={styles.productImage}
+                                />
+
+                                <Text style={styles.productTitle}>
+                                    {products[currentIndex].title}
+                                </Text>
+
+                                <Text style={styles.price}>
+                                    {products[currentIndex].price}
+                                </Text>
+
+                                <Text style={styles.location}>
+                                    {products[currentIndex].location}
+                                </Text>
+                            </View>
+
+                            <View style={styles.actions}>
+                                <TouchableOpacity
+                                    style={styles.dislikeButton}
+                                    onPress={handleDislike}
+                                >
+                                    <Text style={styles.actionText}>❌</Text>
+                                </TouchableOpacity>
+
+                                <TouchableOpacity
+                                    style={styles.likeButton}
+                                    onPress={handleLike}
+                                >
+                                    <Text style={styles.actionText}>❤️</Text>
+                                </TouchableOpacity>
+                            </View>
+                        </>
+                    ) : (
+                        <View style={styles.finishedContainer}>
+                            <Text style={styles.finishedTitle}>
+                                No more products available!
+                            </Text>
+
+                            <Text style={styles.finishedText}>
+                                You have reviewed all available products.
                             </Text>
                         </View>
-
-                        <Text style={styles.productTitle}>
-                            {products[currentIndex].title}
-                        </Text>
-
-                        <Text style={styles.price}>
-                            {products[currentIndex].price}
-                        </Text>
-
-                        <Text style={styles.location}>
-                            {products[currentIndex].location}
-                        </Text>
-                    </View>
-
-                    <View style={styles.actions}>
-                        <TouchableOpacity
-                            style={styles.dislikeButton}
-                            onPress={handleDislike}
-                        >
-                            <Text style={styles.actionText}>❌</Text>
-                        </TouchableOpacity>
-
-                        <TouchableOpacity
-                            style={styles.likeButton}
-                            onPress={handleLike}
-                        >
-                            <Text style={styles.actionText}>❤️</Text>
-                        </TouchableOpacity>
-                    </View>
+                    )}
                 </View>
             )}
 
@@ -153,6 +182,7 @@ export default function Index() {
         logo: {
             fontSize: 32,
             fontWeight: "bold",
+            color: "#00C8B3",
         },
 
         overlay: {
@@ -217,6 +247,26 @@ export default function Index() {
             justifyContent: "center",
         },
 
+        finishedContainer: {
+            alignItems: "center",
+            justifyContent: "center",
+            padding: 30,
+        },
+
+        finishedTitle: {
+            fontSize: 24,
+            fontWeight: "bold",
+            color: "#FFF",
+            textAlign: "center",
+            marginBottom: 10,
+        },
+
+        finishedText: {
+            fontSize: 16,
+            color: "#FFF",
+            textAlign: "center",
+        },
+
         card: {
             width: "85%",
             backgroundColor: "#FFF",
@@ -237,6 +287,12 @@ export default function Index() {
             fontWeight: "bold",
             marginTop: 10,
             marginHorizontal: 15,
+        },
+
+        productImage: {
+          width: "100%",
+          height: 250,
+          borderRadius: 10,
         },
 
         price: {
