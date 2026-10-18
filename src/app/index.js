@@ -113,7 +113,7 @@ export default function Index() {
         {
             id: 15,
             title: "Friger",
-            price: "€45",
+            price: "€47",
             location: "Evo",
             image: require("../../assets/images/friger.png"),
         },
