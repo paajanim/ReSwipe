@@ -1,5 +1,5 @@
-import React, { useState } from "react";
-import { StyleSheet, Text, View, Modal, TextInput, TouchableOpacity, Image } from "react-native";
+import React, { useState, useRef } from "react";
+import { StyleSheet, Text, View, Modal, TextInput, TouchableOpacity, Image, Animated, PanResponder, } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import UploadModal from "../components/UploadModal";
 import { usePosts } from "../context/PostsContext";
@@ -37,7 +37,7 @@ export default function Index() {
             id: 4,
             title: "Vintage Lamp",
             price: "€40",
-            location: "Tampere",
+            location: "Valkeakoski",
             image: require("../../assets/images/vintageLamp.png"),
         },
         {
@@ -47,6 +47,77 @@ export default function Index() {
             location: "Evo",
             image: require("../../assets/images/microwave.png"),
         },
+        {
+            id: 6,
+            title: "Fan",
+            price: "€25.50",
+            location: "Tampere",
+            image: require("../../assets/images/fan.png"),
+        },
+        {
+            id: 7,
+            title: "Dress",
+            price: "€19",
+            location: "Evo",
+            image: require("../../assets/images/dress.png"),
+        },
+        {
+            id: 8,
+            title: "Batman Costume",
+            price: "€35",
+            location: "Hameenlinna",
+            image: require("../../assets/images/batmanCostume.png"),
+        },
+        {
+            id: 9,
+            title: "Flashlight",
+            price: "€16.50",
+            location: "Valkeakoski",
+            image: require("../../assets/images/flashlight.png"),
+        },
+        {
+            id: 10,
+            title: "Sofa",
+            price: "€70",
+            location: "Forssa",
+            image: require("../../assets/images/sofa.png"),
+        },
+        {
+            id: 11,
+            title: "Blender",
+            price: "€20",
+            location: "Riihimäki",
+            image: require("../../assets/images/blender.png"),
+        },
+        {
+            id: 12,
+            title: "Teddy Bear",
+            price: "€25",
+            location: "Valkeakoski",
+            image: require("../../assets/images/teddyBear.png"),
+        },
+        {
+            id: 13,
+            title: "Cowboy Boots",
+            price: "€37",
+            location: "Riihimäki",
+            image: require("../../assets/images/cowboyBoots.png"),
+        },
+        {
+            id: 14,
+            title: "Analog Camera",
+            price: "€88",
+            location: "Mustiala",
+            image: require("../../assets/images/analogCamera.png"),
+        },
+        {
+            id: 15,
+            title: "Friger",
+            price: "€45",
+            location: "Evo",
+            image: require("../../assets/images/friger.png"),
+        },
+
     ];
 
     // Own uploads go to the end of the stack (oldest first), so a new upload shows up as the next card.
@@ -59,12 +130,20 @@ export default function Index() {
 
     const [currentIndex, setCurrentIndex] = useState(0);
 
+    const pan = useRef(new Animated.ValueXY()).current;
+
+    const rotation = pan.x.interpolate({
+      inputRange: [-200, 0, 200],
+      outputRange: ["-15deg", "0deg", "15deg"],
+      extrapolate: "clamp",
+    });
+
     const nextProduct = () => {
         //if (currentIndex < products.length - 1) {
             setCurrentIndex(currentIndex + 1);
     };
 
-    const handleLike = () => {
+    /*const handleLike = () => {
         console.log("Liked:", products[currentIndex].title);
         nextProduct();
     };
@@ -72,6 +151,53 @@ export default function Index() {
     const handleDislike = () => {
         console.log("Disliked:", products[currentIndex].title);
         nextProduct();
+    };*/
+
+    const handleLike = () => {
+      swipeCard(1);
+    };
+
+    const handleDislike = () => {
+      swipeCard(-1);
+    };
+
+    const panResponder = useRef(
+      PanResponder.create({
+        onMoveShouldSetPanResponder: () => true,
+
+        onPanResponderMove: Animated.event(
+          [null, { dx: pan.x, dy: pan.y }],
+          { useNativeDriver: false }
+        ),
+
+        onPanResponderRelease: (_, gestureState) => {
+          console.log("DX:", gestureState.dx);
+          if (gestureState.dx > 150) {
+            swipeCard(1); // LIKE
+          } else if (gestureState.dx < -150) {
+            swipeCard(-1); // DISLIKE
+          } else {
+            Animated.spring(pan, {
+              toValue: { x: 0, y: 0 },
+              useNativeDriver: false,
+            }).start();
+          }
+        },
+      })
+    ).current;
+
+    const swipeCard = (direction) => {
+      Animated.timing(pan, {
+        toValue: {
+          x: direction * 500,
+          y: 0,
+        },
+        duration: 300,
+        useNativeDriver: false,
+      }).start(() => {
+        pan.setValue({ x: 0, y: 0 });
+        setCurrentIndex((prev) => prev + 1);
+      });
     };
 
     return(
@@ -88,7 +214,19 @@ export default function Index() {
 
                     {currentIndex < products.length ? (
                         <>
-                            <View style={styles.card}>
+                            <Animated.View
+                              {...panResponder.panHandlers}
+                              style={[
+                                styles.card,
+                                {
+                                  transform: [
+                                    { translateX: pan.x },
+                                    { translateY: pan.y },
+                                    { rotate: rotation },
+                                  ],
+                                },
+                              ]}
+                            >
                                 <Image
                                     source={products[currentIndex].image}
                                     style={styles.productImage}
@@ -107,7 +245,7 @@ export default function Index() {
                                         {products[currentIndex].location}
                                     </Text>
                                 )}
-                            </View>
+                            </Animated.View>
 
                             <View style={styles.actions}>
                                 <TouchableOpacity
