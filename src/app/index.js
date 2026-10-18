@@ -1,11 +1,17 @@
 import React, { useState } from "react";
 import { StyleSheet, Text, View, Modal, TextInput, TouchableOpacity, Image } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import UploadModal from "../components/UploadModal";
+import { usePosts } from "../context/PostsContext";
 
 export default function Index() {
     const [showModal, setShowModal] = useState(true);
     const [isSignUp, setIsSignUp] = useState(false);
+    const [showUpload, setShowUpload] = useState(false);
+    const { myPosts, addPost } = usePosts();
+    const insets = useSafeAreaInsets();
 
-    const products = [
+    const defaultProducts = [
         {
             id: 1,
             title: "Mountain Bike",
@@ -43,6 +49,14 @@ export default function Index() {
         },
     ];
 
+    // Own uploads go to the end of the stack (oldest first), so a new upload shows up as the next card.
+    const uploadedProducts = [...myPosts].reverse().map((post) => ({
+        ...post,
+        image: { uri: post.image },
+    }));
+
+    const products = [...defaultProducts, ...uploadedProducts];
+
     const [currentIndex, setCurrentIndex] = useState(0);
 
     const nextProduct = () => {
@@ -64,7 +78,13 @@ export default function Index() {
         <View style={styles.container}>
             {!showModal && (
                 <View style={styles.homeContainer}>
-                    <Text style={styles.logo}>ReSwipe</Text>
+                    <View style={[styles.topBar, { top: insets.top + 10 }]}>
+                        <Text style={styles.logo}>ReSwipe</Text>
+
+                        <TouchableOpacity style={styles.plusButton} onPress={() => setShowUpload(true)}>
+                            <Text style={styles.plusText}>+</Text>
+                        </TouchableOpacity>
+                    </View>
 
                     {currentIndex < products.length ? (
                         <>
@@ -82,9 +102,11 @@ export default function Index() {
                                     {products[currentIndex].price}
                                 </Text>
 
-                                <Text style={styles.location}>
-                                    {products[currentIndex].location}
-                                </Text>
+                                {products[currentIndex].location && (
+                                    <Text style={styles.location}>
+                                        {products[currentIndex].location}
+                                    </Text>
+                                )}
                             </View>
 
                             <View style={styles.actions}>
@@ -116,6 +138,12 @@ export default function Index() {
                     )}
                 </View>
             )}
+
+            <UploadModal
+                visible={showUpload}
+                onClose={() => setShowUpload(false)}
+                onUpload={addPost}
+            />
 
             <Modal visible={showModal} animationType="slide">
                 <View style={styles.overlay}>
@@ -183,6 +211,26 @@ export default function Index() {
             fontSize: 32,
             fontWeight: "bold",
             color: "#00C8B3",
+        },
+
+        topBar: {
+            position: "absolute",
+            left: 0,
+            right: 0,
+            alignItems: "center",
+            justifyContent: "center",
+        },
+
+        plusButton: {
+            position: "absolute",
+            right: 20,
+            padding: 5,
+        },
+
+        plusText: {
+            fontSize: 36,
+            color: "#E6F0B8",
+            lineHeight: 38,
         },
 
         overlay: {
@@ -299,13 +347,14 @@ export default function Index() {
             fontSize: 20,
             marginHorizontal: 15,
             marginTop: 5,
+            marginBottom: 15,
         },
 
         location: {
             fontSize: 16,
             marginHorizontal: 15,
             marginBottom: 15,
-            marginTop: 5,
+            marginTop: -10,
         },
 
         actions: {

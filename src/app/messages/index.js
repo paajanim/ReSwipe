@@ -1,9 +1,9 @@
+import Constants from "expo-constants";
+import { router } from "expo-router";
+import { SymbolView } from "expo-symbols";
 import { useEffect, useState } from "react";
 import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { SymbolView } from "expo-symbols";
-import Constants from "expo-constants";
-import { router } from "expo-router";
 
 // In development the phone reaches the API on the same computer that runs Expo.
 // hostUri looks like "192.168.1.20:8081" – we take the IP and use port 3000 of the API.
