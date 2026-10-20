@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useRef } from "react";
+import React, { useMemo, useState } from "react";
 import { ActivityIndicator, Alert, StyleSheet, Text, View, TouchableOpacity, Image, Animated, PanResponder, } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { SymbolView } from "expo-symbols";
@@ -28,7 +28,8 @@ export default function Index() {
 
     const [currentIndex, setCurrentIndex] = useState(0);
 
-    const pan = useRef(new Animated.ValueXY()).current;
+    // Created once and kept for the whole screen (state instead of a ref, so it can be used while rendering).
+    const [pan] = useState(() => new Animated.ValueXY());
 
     const rotation = pan.x.interpolate({
       inputRange: [-200, 0, 200],

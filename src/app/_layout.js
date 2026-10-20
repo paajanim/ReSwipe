@@ -1,8 +1,11 @@
 import { NativeTabs } from 'expo-router/unstable-native-tabs';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { AuthProvider } from '../context/AuthContext';
 import { PostsProvider } from '../context/PostsContext';
 export default function Layout() {
   return (
+    // Needed for swipe gestures, e.g. swipe a chat to the left to delete it
+    <GestureHandlerRootView style={{ flex: 1 }}>
     <AuthProvider>
     <PostsProvider>
       <NativeTabs tintColor="#00C8B3">
@@ -34,5 +37,6 @@ export default function Layout() {
       </NativeTabs>
     </PostsProvider>
     </AuthProvider>
+    </GestureHandlerRootView>
   );
 }

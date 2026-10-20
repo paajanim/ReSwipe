@@ -73,6 +73,12 @@ if (!userColumns.includes('avatar')) {
   db.exec('ALTER TABLE users ADD COLUMN avatar TEXT');
 }
 
+// Deleted posts stay in the table (deleted = 1), so chats about them keep working.
+const postColumns = db.prepare('PRAGMA table_info(posts)').all().map((c) => c.name);
+if (!postColumns.includes('deleted')) {
+  db.exec('ALTER TABLE posts ADD COLUMN deleted INTEGER NOT NULL DEFAULT 0');
+}
+
 // ---------- Express ----------
 const app = express();
 
@@ -198,14 +204,14 @@ app.put('/me/avatar', auth, upload.single('image'), (req, res) => {
 
 // GET /posts  – all posts for the swipe screen, newest first
 app.get('/posts', (_req, res) => {
-  const rows = db.prepare(`${POST_SELECT} ORDER BY posts.created_at DESC`).all();
+  const rows = db.prepare(`${POST_SELECT} WHERE posts.deleted = 0 ORDER BY posts.created_at DESC`).all();
   res.json(rows.map(toPost));
 });
 
 // GET /my-posts  – only the posts of the logged in user (for the profile)
 app.get('/my-posts', auth, (req, res) => {
   const rows = db
-    .prepare(`${POST_SELECT} WHERE posts.user_id = ? ORDER BY posts.created_at DESC`)
+    .prepare(`${POST_SELECT} WHERE posts.user_id = ? AND posts.deleted = 0 ORDER BY posts.created_at DESC`)
     .all(req.user.id);
   res.json(rows.map(toPost));
 });
@@ -226,10 +232,55 @@ app.post('/posts', auth, upload.single('image'), (req, res) => {
   res.status(201).json(toPost(row));
 });
 
+// Returns the post only if it belongs to the user and is not deleted.
+const findOwnPost = (postId, userId) =>
+  db.prepare('SELECT * FROM posts WHERE id = ? AND user_id = ? AND deleted = 0').get(postId, userId);
+
+// PUT /posts/:id  – multipart form: title, price, location (optional), image (optional file).
+// Only the owner can edit. Without a new image the old one is kept.
+app.put('/posts/:id', auth, upload.single('image'), (req, res) => {
+  const post = findOwnPost(req.params.id, req.user.id);
+
+  if (!post) {
+    return res.status(404).json({ error: 'Post not found.' });
+  }
+
+  const { title, price, location } = req.body ?? {};
+
+  if (!title || !price) {
+    return res.status(400).json({ error: 'Title and price are required.' });
+  }
+
+  const image = req.file ? req.file.filename : post.image;
+  db.prepare('UPDATE posts SET title = ?, price = ?, location = ?, image = ? WHERE id = ?')
+    .run(title, price, location || null, image, post.id);
+
+  // Remove the old picture, it is not used anymore.
+  if (req.file) {
+    fs.rm(path.join(UPLOAD_DIR, post.image), { force: true }, () => {});
+  }
+
+  const row = db.prepare(`${POST_SELECT} WHERE posts.id = ?`).get(post.id);
+  res.json(toPost(row));
+});
+
+// DELETE /posts/:id  – e.g. when it is sold. Only the owner can delete.
+// The post disappears from swiping and the profile, chats about it stay.
+app.delete('/posts/:id', auth, (req, res) => {
+  const post = findOwnPost(req.params.id, req.user.id);
+
+  if (!post) {
+    return res.status(404).json({ error: 'Post not found.' });
+  }
+
+  db.prepare('UPDATE posts SET deleted = 1 WHERE id = ?').run(post.id);
+  res.json({ ok: true });
+});
+
 // POST /posts/:id/like  – liking a post opens a chat between the liker (buyer) and the seller.
 // Liking the same post again returns the existing chat.
 app.post('/posts/:id/like', auth, (req, res) => {
-  const post = db.prepare('SELECT * FROM posts WHERE id = ?').get(req.params.id);
+  const post = db.prepare('SELECT * FROM posts WHERE id = ? AND deleted = 0').get(req.params.id);
 
   if (!post) {
     return res.status(404).json({ error: 'Post not found.' });
@@ -309,6 +360,18 @@ app.get('/chats/:id', auth, (req, res) => {
     postTitle: post.title,
     messages: messages.map((m) => ({ id: String(m.id), text: m.text, mine: m.sender_id === req.user.id })),
   });
+});
+
+// DELETE /chats/:id  – deletes the chat with all messages, for both users.
+app.delete('/chats/:id', auth, (req, res) => {
+  const chat = findChat(req.params.id, req.user.id);
+
+  if (!chat) {
+    return res.status(404).json({ error: 'Chat not found.' });
+  }
+
+  db.prepare('DELETE FROM chats WHERE id = ?').run(chat.id);
+  res.json({ ok: true });
 });
 
 // POST /chats/:id/messages  – Body: { text }. Sender is the logged in user.

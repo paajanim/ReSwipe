@@ -53,18 +53,37 @@ export function PostsProvider({ children }) {
   const current = data.token === token ? data : EMPTY;
   const loading = Boolean(token) && (data.token !== token || reloading);
 
-  // post: { title, price, location, image: { uri, mimeType } }
-  const addPost = async (post) => {
+  // post: { title, price, location, image: { uri, mimeType } }. image is optional when editing.
+  const postForm = (post) => {
     const form = new FormData();
     form.append("title", post.title);
     form.append("price", post.price);
     if (post.location) {
       form.append("location", post.location);
     }
-    form.append("image", imageFile(post.image));
+    if (post.image) {
+      form.append("image", imageFile(post.image));
+    }
+    return form;
+  };
 
-    const created = await apiFetch("/posts", { token, body: form });
+  const addPost = async (post) => {
+    const created = await apiFetch("/posts", { token, body: postForm(post) });
     setData((d) => ({ ...d, posts: [...d.posts, created], myPosts: [created, ...d.myPosts] }));
+  };
+
+  // Only own posts. Without a new image the old one stays.
+  const updatePost = async (postId, post) => {
+    const updated = await apiFetch(`/posts/${postId}`, { token, body: postForm(post), method: "PUT" });
+    const replace = (list) => list.map((p) => (p.id === postId ? updated : p));
+    setData((d) => ({ ...d, posts: replace(d.posts), myPosts: replace(d.myPosts) }));
+  };
+
+  // e.g. when it is sold. Chats about the post stay.
+  const deletePost = async (postId) => {
+    await apiFetch(`/posts/${postId}`, { token, method: "DELETE" });
+    const remove = (list) => list.filter((p) => p.id !== postId);
+    setData((d) => ({ ...d, posts: remove(d.posts), myPosts: remove(d.myPosts) }));
   };
 
   // Liking a post of another user opens a chat with them (the API returns { chatId, created }).
@@ -72,7 +91,7 @@ export function PostsProvider({ children }) {
 
   return (
     <PostsContext.Provider
-      value={{ posts: current.posts, myPosts: current.myPosts, loading, error: current.error, loadPosts, addPost, likePost }}
+      value={{ posts: current.posts, myPosts: current.myPosts, loading, error: current.error, loadPosts, addPost, updatePost, deletePost, likePost }}
     >
       {children}
     </PostsContext.Provider>

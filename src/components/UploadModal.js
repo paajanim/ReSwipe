@@ -1,19 +1,28 @@
 import React, { useState } from "react";
 import { ActivityIndicator, Alert, Image, Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 import * as ImagePicker from "expo-image-picker";
+import { imageUrl } from "../config/api";
 import { LOCATIONS } from "../config/locations";
 import Dropdown from "./Dropdown";
 
-export default function UploadModal({ visible, onClose, onUpload }) {
-  const [title, setTitle] = useState("");
-  const [price, setPrice] = useState("");
+// post: when given, the modal edits this post (mount it with a new key on every open).
+// Otherwise it creates a new one.
+export default function UploadModal({ visible, onClose, onUpload, post }) {
+  const editing = Boolean(post);
+  const [title, setTitle] = useState(post?.title ?? "");
+  // Prices are saved as "€25", the field only holds the number.
+  const [price, setPrice] = useState(post?.price.replace("€", "") ?? "");
   // One of the HAMK campuses, null until one is chosen
-  const [location, setLocation] = useState(null);
-  // Picked image asset ({ uri, mimeType, ... }), needed for the upload
+  const [location, setLocation] = useState(LOCATIONS.includes(post?.location) ? post.location : null);
+  // Picked image asset ({ uri, mimeType, ... }), needed for the upload.
+  // When editing it stays null until a new image is picked.
   const [image, setImage] = useState(null);
   const [uploading, setUploading] = useState(false);
 
   const resetForm = () => {
+    if (editing) {
+      return;
+    }
     setTitle("");
     setPrice("");
     setLocation(null);
@@ -46,7 +55,7 @@ export default function UploadModal({ visible, onClose, onUpload }) {
   };
 
   const handleUpload = async () => {
-    if (!title.trim() || !price.trim() || !location || !image) {
+    if (!title.trim() || !price.trim() || !location || (!image && !editing)) {
       Alert.alert("Missing information", "Please add a title, a price, a location and an image.");
       return;
     }
@@ -58,7 +67,7 @@ export default function UploadModal({ visible, onClose, onUpload }) {
       resetForm();
       onClose();
     } catch (e) {
-      Alert.alert("Upload failed", e.message);
+      Alert.alert(editing ? "Saving failed" : "Upload failed", e.message);
     } finally {
       setUploading(false);
     }
@@ -73,7 +82,7 @@ export default function UploadModal({ visible, onClose, onUpload }) {
           keyboardDismissMode="interactive"
           automaticallyAdjustKeyboardInsets
         >
-          <Text style={styles.heading}>New Post</Text>
+          <Text style={styles.heading}>{editing ? "Edit Post" : "New Post"}</Text>
 
           <Text style={styles.label}>TITLE</Text>
           <TextInput
@@ -104,8 +113,8 @@ export default function UploadModal({ visible, onClose, onUpload }) {
 
           <Text style={styles.label}>IMAGE</Text>
           <TouchableOpacity style={styles.imagePicker} onPress={pickImage}>
-            {image ? (
-              <Image source={{ uri: image.uri }} style={styles.image} />
+            {image || editing ? (
+              <Image source={{ uri: image ? image.uri : imageUrl(post.image) }} style={styles.image} />
             ) : (
               <>
                 <Text style={styles.imagePickerPlus}>+</Text>
@@ -123,7 +132,7 @@ export default function UploadModal({ visible, onClose, onUpload }) {
               {uploading ? (
                 <ActivityIndicator color="#FFFFFF" />
               ) : (
-                <Text style={[styles.buttonText, styles.uploadButtonText]}>Upload</Text>
+                <Text style={[styles.buttonText, styles.uploadButtonText]}>{editing ? "Save" : "Upload"}</Text>
               )}
             </TouchableOpacity>
           </View>

@@ -3,7 +3,9 @@ import { ActivityIndicator, Alert, FlatList, Image, ScrollView, StyleSheet, Text
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as ImagePicker from "expo-image-picker";
 import { router } from "expo-router";
+import { SymbolView } from "expo-symbols";
 import Avatar from "../components/Avatar";
+import UploadModal from "../components/UploadModal";
 import { imageUrl } from "../config/api";
 import { useAuth } from "../context/AuthContext";
 import { usePosts } from "../context/PostsContext";
@@ -12,9 +14,39 @@ export default function Profile() {
   const insets = useSafeAreaInsets();
   const { user, uploadAvatar, logout } = useAuth();
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  // Post that is open in the edit modal. Kept after closing, so the modal does not change while it slides out.
+  const [editingPost, setEditingPost] = useState(null);
+  const [showEdit, setShowEdit] = useState(false);
+  // New key on every open, so the form starts from the saved post.
+  const [editKey, setEditKey] = useState(0);
 
   // Own posts from the API, new uploads from the Home screen are added directly.
-  const { myPosts } = usePosts();
+  const { myPosts, updatePost, deletePost } = usePosts();
+
+  const editPost = (post) => {
+    setEditingPost(post);
+    setEditKey((key) => key + 1);
+    setShowEdit(true);
+  };
+
+  const confirmDelete = (post) => {
+    Alert.alert("Delete post?", `"${post.title}" will no longer be shown. Your chats about it stay.`, [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Delete",
+        style: "destructive",
+        onPress: () => deletePost(post.id).catch((e) => Alert.alert("Delete failed", e.message)),
+      },
+    ]);
+  };
+
+  const openPostMenu = (post) => {
+    Alert.alert(post.title, undefined, [
+      { text: "Edit", onPress: () => editPost(post) },
+      { text: "Delete (sold)", style: "destructive", onPress: () => confirmDelete(post) },
+      { text: "Cancel", style: "cancel" },
+    ]);
+  };
 
   const pickProfileImage = async () => {
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -90,14 +122,32 @@ export default function Profile() {
         snapToInterval={CARD_WIDTH + CARD_GAP}
         decelerationRate="fast"
         renderItem={({ item }) => (
-          <View style={styles.post}>
+          <TouchableOpacity style={styles.post} onPress={() => openPostMenu(item)} activeOpacity={0.8}>
             <Image source={{ uri: imageUrl(item.image) }} style={styles.postImage} />
+            {/* Shows that the card can be tapped for edit / delete */}
+            <View style={styles.menuBadge}>
+              <SymbolView
+                name={{ ios: "ellipsis", android: "more_horiz", web: "more_horiz" }}
+                tintColor="#FFFFFF"
+                size={16}
+              />
+            </View>
             <Text style={styles.postTitle} numberOfLines={1}>{item.title}</Text>
             <Text style={styles.postPrice}>{item.price}</Text>
-          </View>
+          </TouchableOpacity>
         )}
         ListEmptyComponent={<Text style={styles.emptyText}>You have no posts yet.</Text>}
       />
+
+      {editingPost && (
+        <UploadModal
+          key={editKey}
+          post={editingPost}
+          visible={showEdit}
+          onClose={() => setShowEdit(false)}
+          onUpload={(fields) => updatePost(editingPost.id, fields)}
+        />
+      )}
     </ScrollView>
   );
 }
@@ -202,6 +252,18 @@ const styles = StyleSheet.create({
     aspectRatio: 3 / 4,
     borderRadius: 12,
     backgroundColor: "#FFFFFF",
+  },
+
+  menuBadge: {
+    position: "absolute",
+    top: 8,
+    right: 8,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: "rgba(0,0,0,0.45)",
+    justifyContent: "center",
+    alignItems: "center",
   },
 
   postTitle: {

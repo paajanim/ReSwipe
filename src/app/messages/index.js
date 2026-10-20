@@ -1,7 +1,8 @@
 import { router, useFocusEffect } from "expo-router";
 import { SymbolView } from "expo-symbols";
 import { useCallback, useState } from "react";
-import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Alert, FlatList, Pressable, StyleSheet, Text, View } from "react-native";
+import Swipeable from "react-native-gesture-handler/ReanimatedSwipeable";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Avatar from "../../components/Avatar";
 import { apiFetch } from "../../config/api";
@@ -31,6 +32,24 @@ export default function Messages() {
 
   const loading = chats === null && !error;
 
+  // Deletes the chat for both users. swipeable: the row, closed again on cancel.
+  const deleteChat = (chat, swipeable) => {
+    Alert.alert("Delete chat?", `The chat with ${chat.name} will be deleted for both of you.`, [
+      { text: "Cancel", style: "cancel", onPress: () => swipeable.close() },
+      {
+        text: "Delete",
+        style: "destructive",
+        onPress: () =>
+          apiFetch(`/chats/${chat.id}`, { token, method: "DELETE" })
+            .then(() => setChats((current) => current.filter((c) => c.id !== chat.id)))
+            .catch((e) => {
+              swipeable.close();
+              Alert.alert("Delete failed", e.message);
+            }),
+      },
+    ]);
+  };
+
   return (
     <View style={styles.container}>
       <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
@@ -55,21 +74,38 @@ export default function Messages() {
           chats && <Text style={styles.status}>No chats yet. Like a product to start one.</Text>
         }
         renderItem={({ item }) => (
-          <Pressable
-            style={({ pressed }) => [styles.row, pressed && styles.rowPressed]}
-            onPress={() => router.push(`/messages/${item.id}`)}
+          // Swipe to the left shows the delete button
+          <Swipeable
+            friction={2}
+            rightThreshold={40}
+            overshootRight={false}
+            renderRightActions={(_progress, _translation, swipeable) => (
+              <Pressable style={styles.deleteAction} onPress={() => deleteChat(item, swipeable)}>
+                <SymbolView
+                  name={{ ios: "trash.fill", android: "delete", web: "delete" }}
+                  tintColor="#FFFFFF"
+                  size={24}
+                />
+                <Text style={styles.deleteText}>Delete</Text>
+              </Pressable>
+            )}
           >
-            <Avatar path={item.avatar} size={52} style={styles.avatar} />
-            <View style={styles.textContainer}>
-              <Text style={styles.name}>
-                {item.name}
-                <Text style={styles.postTitle}> · {item.postTitle}</Text>
-              </Text>
-              <Text style={styles.lastMessage} numberOfLines={1}>
-                {item.lastMessage}
-              </Text>
-            </View>
-          </Pressable>
+            <Pressable
+              style={({ pressed }) => [styles.row, pressed && styles.rowPressed]}
+              onPress={() => router.push(`/messages/${item.id}`)}
+            >
+              <Avatar path={item.avatar} size={52} style={styles.avatar} />
+              <View style={styles.textContainer}>
+                <Text style={styles.name}>
+                  {item.name}
+                  <Text style={styles.postTitle}> · {item.postTitle}</Text>
+                </Text>
+                <Text style={styles.lastMessage} numberOfLines={1}>
+                  {item.lastMessage}
+                </Text>
+              </View>
+            </Pressable>
+          </Swipeable>
         )}
       />
     </View>
@@ -95,6 +131,7 @@ const styles = StyleSheet.create({
     color: "#FFFFFF",
   },
   row: {
+    backgroundColor: "#FFFFFF",
     flexDirection: "row",
     alignItems: "center",
     paddingVertical: 16,
@@ -130,6 +167,18 @@ const styles = StyleSheet.create({
     marginTop: 24,
     textAlign: "center",
     color: "#333333",
+  },
+  deleteAction: {
+    width: 90,
+    backgroundColor: "#E5484D",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  deleteText: {
+    color: "#FFFFFF",
+    fontSize: 13,
+    fontWeight: "600",
+    marginTop: 4,
   },
   separator: {
     height: 1,
