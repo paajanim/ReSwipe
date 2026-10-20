@@ -163,10 +163,12 @@ export default function Index() {
 
     const panResponder = useRef(
       PanResponder.create({
-        onMoveShouldSetPanResponder: () => true,
+        // Only grab horizontal drags, the card moves on the x axis only.
+        onMoveShouldSetPanResponder: (_, gestureState) =>
+          Math.abs(gestureState.dx) > Math.abs(gestureState.dy),
 
         onPanResponderMove: Animated.event(
-          [null, { dx: pan.x, dy: pan.y }],
+          [null, { dx: pan.x }],
           { useNativeDriver: false }
         ),
 
@@ -221,7 +223,6 @@ export default function Index() {
                                 {
                                   transform: [
                                     { translateX: pan.x },
-                                    { translateY: pan.y },
                                     { rotate: rotation },
                                   ],
                                 },

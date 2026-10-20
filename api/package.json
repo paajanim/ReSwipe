@@ -4,13 +4,17 @@
   "description": "",
   "main": "data.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "node data.js"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "type": "module",
   "dependencies": {
-    "express": "^5.3.0"
+    "bcryptjs": "^3.0.3",
+    "better-sqlite3": "^13.0.3",
+    "express": "^5.3.0",
+    "jsonwebtoken": "^9.0.3",
+    "multer": "^2.4.0"
   }
 }

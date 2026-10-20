@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Alert, Image, KeyboardAvoidingView, Modal, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { Alert, Image, Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 import * as ImagePicker from "expo-image-picker";
 
 export default function UploadModal({ visible, onClose, onUpload }) {
@@ -51,8 +51,13 @@ export default function UploadModal({ visible, onClose, onUpload }) {
 
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={handleCancel}>
-      <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === "ios" ? "padding" : undefined}>
-        <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+      <View style={styles.container}>
+        <ScrollView
+          contentContainerStyle={styles.content}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="interactive"
+          automaticallyAdjustKeyboardInsets
+        >
           <Text style={styles.heading}>New Post</Text>
 
           <Text style={styles.label}>TITLE</Text>
@@ -96,7 +101,7 @@ export default function UploadModal({ visible, onClose, onUpload }) {
             </TouchableOpacity>
           </View>
         </ScrollView>
-      </KeyboardAvoidingView>
+      </View>
     </Modal>
   );
 }
