@@ -3,6 +3,7 @@ import { StyleSheet, Text, View, Modal, TextInput, TouchableOpacity, Image, Anim
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import UploadModal from "../components/UploadModal";
 import { usePosts } from "../context/PostsContext";
+import { LinearGradient } from "expo-linear-gradient";
 
 export default function Index() {
     const [showModal, setShowModal] = useState(true);
@@ -138,6 +139,30 @@ export default function Index() {
       extrapolate: "clamp",
     });
 
+    const likeScale = pan.x.interpolate({
+      inputRange: [0, 150],
+      outputRange: [1, 1.4],
+      extrapolate: "clamp",
+    });
+
+    const dislikeScale = pan.x.interpolate({
+      inputRange: [-150, 0],
+      outputRange: [1.4, 1],
+      extrapolate: "clamp",
+    });
+
+    const likeOpacity = pan.x.interpolate({
+      inputRange: [0, 150],
+      outputRange: [0, 1],
+      extrapolate: "clamp",
+    });
+
+    const dislikeOpacity = pan.x.interpolate({
+      inputRange: [-150, 0],
+      outputRange: [1, 0],
+      extrapolate: "clamp",
+    });
+
     const nextProduct = () => {
         //if (currentIndex < products.length - 1) {
             setCurrentIndex(currentIndex + 1);
@@ -227,6 +252,37 @@ export default function Index() {
                                 },
                               ]}
                             >
+
+                            <Animated.View
+                              pointerEvents="none"
+                              style={[
+                                styles.likeGradient,
+                                { opacity: likeOpacity },
+                              ]}
+                            >
+                              <LinearGradient
+                                  colors={["transparent", "rgba(0,255,0,0.9)"]}
+                                  start={{ x: 0, y: 0 }}
+                                  end={{ x: 1, y: 0 }}
+                                  style={StyleSheet.absoluteFill}
+                              />
+                            </Animated.View>
+
+                            <Animated.View
+                              pointerEvents="none"
+                              style={[
+                                styles.dislikeGradient,
+                                { opacity: dislikeOpacity },
+                              ]}
+                            >
+                              <LinearGradient
+                                colors={["rgba(255,0,0,0.8)", "transparent"]}
+                                start={{ x: 0, y: 0 }}
+                                end={{ x: 1, y: 0 }}
+                                style={StyleSheet.absoluteFill}
+                              />
+                            </Animated.View>
+
                                 <Image
                                     source={products[currentIndex].image}
                                     style={styles.productImage}
@@ -248,20 +304,33 @@ export default function Index() {
                             </Animated.View>
 
                             <View style={styles.actions}>
+                              <Animated.View
+                                style={{
+                                  transform: [{ scale: dislikeScale }],
+                                }}
+                              >
                                 <TouchableOpacity
-                                    style={styles.dislikeButton}
-                                    onPress={handleDislike}
+                                  style={styles.dislikeButton}
+                                  onPress={handleDislike}
                                 >
-                                    <Text style={styles.actionText}>❌</Text>
+                                  <Text style={styles.actionText}>❌</Text>
                                 </TouchableOpacity>
+                              </Animated.View>
 
+                              <Animated.View
+                                style={{
+                                  transform: [{ scale: likeScale }],
+                                }}
+                              >
                                 <TouchableOpacity
-                                    style={styles.likeButton}
-                                    onPress={handleLike}
+                                  style={styles.likeButton}
+                                  onPress={handleLike}
                                 >
-                                    <Text style={styles.actionText}>❤️</Text>
+                                  <Text style={styles.actionText}>❤️</Text>
                                 </TouchableOpacity>
+                              </Animated.View>
                             </View>
+
                         </>
                     ) : (
                         <View style={styles.finishedContainer}>
@@ -521,5 +590,23 @@ export default function Index() {
 
         actionText: {
             fontSize: 28,
+        },
+
+        likeGradient: {
+          position: "absolute",
+          top: 0,
+          right: 0,
+          width: "100%",
+          height: "100%",
+          zIndex: 5,
+        },
+
+        dislikeGradient: {
+          position: "absolute",
+          top: 0,
+          left: 0,
+          width: "100%",
+          height: "100%",
+          zIndex: 5,
         },
     });
