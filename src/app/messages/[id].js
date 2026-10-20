@@ -1,9 +1,9 @@
-import Constants from "expo-constants";
 import { router, useLocalSearchParams } from "expo-router";
 import { SymbolView } from "expo-symbols";
 import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
   FlatList,
   KeyboardAvoidingView,
   Platform,
@@ -14,24 +14,52 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-
-// Same API address as in messages/index.js
-const host = Constants.expoConfig?.hostUri?.split(":")[0] ?? "localhost";
-const API_URL = `http://${host}:3000`;
+import Avatar from "../../components/Avatar";
+import { apiFetch } from "../../config/api";
+import { useAuth } from "../../context/AuthContext";
 
 export default function Chat() {
   const { id } = useLocalSearchParams();
   const insets = useSafeAreaInsets();
+  const { token } = useAuth();
   const [chat, setChat] = useState(null);
   const [error, setError] = useState(null);
   const [text, setText] = useState("");
+  const [sending, setSending] = useState(false);
 
+  const sendMessage = async () => {
+    const message = text.trim();
+    if (!message || sending) {
+      return;
+    }
+
+    setSending(true);
+
+    try {
+      const created = await apiFetch(`/chats/${id}/messages`, { token, body: { text: message } });
+      setChat((current) => ({ ...current, messages: [...current.messages, created] }));
+      setText("");
+    } catch (e) {
+      Alert.alert("Message not sent", e.message);
+    } finally {
+      setSending(false);
+    }
+  };
+
+  // Load the chat and check for new messages every 5 seconds while the chat is open.
   useEffect(() => {
-    fetch(`${API_URL}/chats/${id}`)
-      .then((res) => res.json())
-      .then((data) => setChat(data))
-      .catch(() => setError("Chat could not be loaded. Is the API running?"));
-  }, [id]);
+    const load = () =>
+      apiFetch(`/chats/${id}`, { token })
+        .then((data) => {
+          setChat(data);
+          setError(null);
+        })
+        .catch((e) => setError(e.message));
+
+    load();
+    const interval = setInterval(load, 5000);
+    return () => clearInterval(interval);
+  }, [id, token]);
 
   return (
     <KeyboardAvoidingView
@@ -46,8 +74,11 @@ export default function Chat() {
             size={24}
           />
         </Pressable>
-        <View style={styles.avatar} />
-        <Text style={styles.headerTitle}>{chat?.name ?? ""}</Text>
+        <Avatar path={chat?.avatar} size={36} style={styles.avatar} />
+        <View>
+          <Text style={styles.headerTitle}>{chat?.name ?? ""}</Text>
+          {chat?.postTitle && <Text style={styles.headerSubtitle}>{chat.postTitle}</Text>}
+        </View>
       </View>
 
       {!chat && !error && <ActivityIndicator style={styles.status} color="#00C8B3" />}
@@ -60,7 +91,7 @@ export default function Chat() {
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.list}
         renderItem={({ item }) => {
-          const isMine = item.from === "me";
+          const isMine = item.mine;
           return (
             <View style={[styles.bubble, isMine ? styles.bubbleMine : styles.bubbleOther]}>
               <Text style={isMine ? styles.textMine : styles.textOther}>{item.text}</Text>
@@ -75,9 +106,15 @@ export default function Chat() {
           placeholder="Write a message..."
           value={text}
           onChangeText={setText}
+          onSubmitEditing={sendMessage}
+          returnKeyType="send"
         />
-        {/* Sending comes later (POST to the API) */}
-        <Pressable style={styles.sendButton}>
+        <Pressable
+          style={[styles.sendButton, (!text.trim() || sending) && styles.sendButtonDisabled]}
+          onPress={sendMessage}
+          disabled={!text.trim() || sending || !chat}
+          hitSlop={8}
+        >
           <SymbolView
             name={{ ios: "paperplane.fill", android: "send", web: "send" }}
             tintColor="#FFFFFF"
@@ -103,10 +140,6 @@ const styles = StyleSheet.create({
     paddingBottom: 12,
   },
   avatar: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: "#C8C8CC",
     marginLeft: 12,
     marginRight: 10,
   },
@@ -114,6 +147,10 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: "bold",
     color: "#FFFFFF",
+  },
+  headerSubtitle: {
+    fontSize: 13,
+    color: "#E6FFFB",
   },
   status: {
     marginTop: 24,
@@ -169,5 +206,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     marginLeft: 8,
+  },
+  sendButtonDisabled: {
+    opacity: 0.5,
   },
 });

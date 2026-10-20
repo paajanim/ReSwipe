@@ -16,6 +16,7 @@ services:
     ports:
       - "80:80"
       - "443:443"
+      - "443:443/udp" # HTTP/3, which Caddy announces to the apps
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile
       - caddy_data:/data

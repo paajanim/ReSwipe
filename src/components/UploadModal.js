@@ -1,15 +1,19 @@
 import React, { useState } from "react";
-import { Alert, Image, Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { ActivityIndicator, Alert, Image, Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 import * as ImagePicker from "expo-image-picker";
 
 export default function UploadModal({ visible, onClose, onUpload }) {
   const [title, setTitle] = useState("");
   const [price, setPrice] = useState("");
+  const [location, setLocation] = useState("");
+  // Picked image asset ({ uri, mimeType, ... }), needed for the upload
   const [image, setImage] = useState(null);
+  const [uploading, setUploading] = useState(false);
 
   const resetForm = () => {
     setTitle("");
     setPrice("");
+    setLocation("");
     setImage(null);
   };
 
@@ -29,7 +33,7 @@ export default function UploadModal({ visible, onClose, onUpload }) {
     });
 
     if (!result.canceled) {
-      setImage(result.assets[0].uri);
+      setImage(result.assets[0]);
     }
   };
 
@@ -38,15 +42,23 @@ export default function UploadModal({ visible, onClose, onUpload }) {
     onClose();
   };
 
-  const handleUpload = () => {
+  const handleUpload = async () => {
     if (!title.trim() || !price.trim() || !image) {
       Alert.alert("Missing information", "Please add a title, a price and an image.");
       return;
     }
 
-    onUpload({ title: title.trim(), price: `€${price.trim()}`, image });
-    resetForm();
-    onClose();
+    setUploading(true);
+
+    try {
+      await onUpload({ title: title.trim(), price: `€${price.trim()}`, location: location.trim(), image });
+      resetForm();
+      onClose();
+    } catch (e) {
+      Alert.alert("Upload failed", e.message);
+    } finally {
+      setUploading(false);
+    }
   };
 
   return (
@@ -79,10 +91,19 @@ export default function UploadModal({ visible, onClose, onUpload }) {
             keyboardType="decimal-pad"
           />
 
+          <Text style={styles.label}>LOCATION</Text>
+          <TextInput
+            style={styles.input}
+            value={location}
+            onChangeText={setLocation}
+            placeholder="City (optional)"
+            placeholderTextColor="#888"
+          />
+
           <Text style={styles.label}>IMAGE</Text>
           <TouchableOpacity style={styles.imagePicker} onPress={pickImage}>
             {image ? (
-              <Image source={{ uri: image }} style={styles.image} />
+              <Image source={{ uri: image.uri }} style={styles.image} />
             ) : (
               <>
                 <Text style={styles.imagePickerPlus}>+</Text>
@@ -92,12 +113,16 @@ export default function UploadModal({ visible, onClose, onUpload }) {
           </TouchableOpacity>
 
           <View style={styles.buttonContainer}>
-            <TouchableOpacity style={styles.button} onPress={handleCancel}>
+            <TouchableOpacity style={styles.button} onPress={handleCancel} disabled={uploading}>
               <Text style={styles.buttonText}>Cancel</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity style={[styles.button, styles.uploadButton]} onPress={handleUpload}>
-              <Text style={[styles.buttonText, styles.uploadButtonText]}>Upload</Text>
+            <TouchableOpacity style={[styles.button, styles.uploadButton]} onPress={handleUpload} disabled={uploading}>
+              {uploading ? (
+                <ActivityIndicator color="#FFFFFF" />
+              ) : (
+                <Text style={[styles.buttonText, styles.uploadButtonText]}>Upload</Text>
+              )}
             </TouchableOpacity>
           </View>
         </ScrollView>

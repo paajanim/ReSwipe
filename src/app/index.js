@@ -1,132 +1,19 @@
-import React, { useState, useRef } from "react";
-import { StyleSheet, Text, View, Modal, TextInput, TouchableOpacity, Image, Animated, PanResponder, } from "react-native";
+import React, { useMemo, useState, useRef } from "react";
+import { ActivityIndicator, Alert, StyleSheet, Text, View, TouchableOpacity, Image, Animated, PanResponder, } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import AuthModal from "../components/AuthModal";
 import UploadModal from "../components/UploadModal";
+import { imageUrl } from "../config/api";
+import { useAuth } from "../context/AuthContext";
 import { usePosts } from "../context/PostsContext";
 
 export default function Index() {
-    const [showModal, setShowModal] = useState(true);
-    const [isSignUp, setIsSignUp] = useState(false);
     const [showUpload, setShowUpload] = useState(false);
-    const { myPosts, addPost } = usePosts();
+    const { user, restoring } = useAuth();
+    const { posts, loading, error, loadPosts, addPost, likePost } = usePosts();
+    // Own posts are not shown in the swipe stack (they are in the profile).
+    const products = posts.filter((post) => post.username !== user?.username);
     const insets = useSafeAreaInsets();
-
-    const defaultProducts = [
-        {
-            id: 1,
-            title: "Mountain Bike",
-            price: "€150",
-            location: "Hameenlinna",
-            image: require("../../assets/images/bike.png"),
-        },
-        {
-            id: 2,
-            title: "Office Chair",
-            price: "€49",
-            location: "Tampere",
-            image: require("../../assets/images/officeChair.png"),
-        },
-        {
-            id: 3,
-            title: "Study Desk",
-            price: "€95",
-            location: "Helsinki",
-            image: require("../../assets/images/studyDesk.png"),
-        },
-        {
-            id: 4,
-            title: "Vintage Lamp",
-            price: "€40",
-            location: "Valkeakoski",
-            image: require("../../assets/images/vintageLamp.png"),
-        },
-        {
-            id: 5,
-            title: "Microwave",
-            price: "€35",
-            location: "Evo",
-            image: require("../../assets/images/microwave.png"),
-        },
-        {
-            id: 6,
-            title: "Fan",
-            price: "€25.50",
-            location: "Tampere",
-            image: require("../../assets/images/fan.png"),
-        },
-        {
-            id: 7,
-            title: "Dress",
-            price: "€19",
-            location: "Evo",
-            image: require("../../assets/images/dress.png"),
-        },
-        {
-            id: 8,
-            title: "Batman Costume",
-            price: "€35",
-            location: "Hameenlinna",
-            image: require("../../assets/images/batmanCostume.png"),
-        },
-        {
-            id: 9,
-            title: "Flashlight",
-            price: "€16.50",
-            location: "Valkeakoski",
-            image: require("../../assets/images/flashlight.png"),
-        },
-        {
-            id: 10,
-            title: "Sofa",
-            price: "€70",
-            location: "Forssa",
-            image: require("../../assets/images/sofa.png"),
-        },
-        {
-            id: 11,
-            title: "Blender",
-            price: "€20",
-            location: "Riihimäki",
-            image: require("../../assets/images/blender.png"),
-        },
-        {
-            id: 12,
-            title: "Teddy Bear",
-            price: "€25",
-            location: "Valkeakoski",
-            image: require("../../assets/images/teddyBear.png"),
-        },
-        {
-            id: 13,
-            title: "Cowboy Boots",
-            price: "€37",
-            location: "Riihimäki",
-            image: require("../../assets/images/cowboyBoots.png"),
-        },
-        {
-            id: 14,
-            title: "Analog Camera",
-            price: "€88",
-            location: "Mustiala",
-            image: require("../../assets/images/analogCamera.png"),
-        },
-        {
-            id: 15,
-            title: "Friger",
-            price: "€47",
-            location: "Evo",
-            image: require("../../assets/images/friger.png"),
-        },
-
-    ];
-
-    // Own uploads go to the end of the stack (oldest first), so a new upload shows up as the next card.
-    const uploadedProducts = [...myPosts].reverse().map((post) => ({
-        ...post,
-        image: { uri: post.image },
-    }));
-
-    const products = [...defaultProducts, ...uploadedProducts];
 
     const [currentIndex, setCurrentIndex] = useState(0);
 
@@ -138,21 +25,6 @@ export default function Index() {
       extrapolate: "clamp",
     });
 
-    const nextProduct = () => {
-        //if (currentIndex < products.length - 1) {
-            setCurrentIndex(currentIndex + 1);
-    };
-
-    /*const handleLike = () => {
-        console.log("Liked:", products[currentIndex].title);
-        nextProduct();
-    };
-
-    const handleDislike = () => {
-        console.log("Disliked:", products[currentIndex].title);
-        nextProduct();
-    };*/
-
     const handleLike = () => {
       swipeCard(1);
     };
@@ -161,7 +33,10 @@ export default function Index() {
       swipeCard(-1);
     };
 
-    const panResponder = useRef(
+    const currentProduct = products[currentIndex];
+
+    // Re-created for every card, so a swipe always likes the card that is shown.
+    const panResponder = useMemo(() =>
       PanResponder.create({
         // Only grab horizontal drags, the card moves on the x axis only.
         onMoveShouldSetPanResponder: (_, gestureState) =>
@@ -173,7 +48,6 @@ export default function Index() {
         ),
 
         onPanResponderRelease: (_, gestureState) => {
-          console.log("DX:", gestureState.dx);
           if (gestureState.dx > 150) {
             swipeCard(1); // LIKE
           } else if (gestureState.dx < -150) {
@@ -185,10 +59,17 @@ export default function Index() {
             }).start();
           }
         },
-      })
-    ).current;
+      }),
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+      [currentProduct]
+    );
 
     const swipeCard = (direction) => {
+      // Like = chat with the seller is created on the server (nothing happens for own posts).
+      if (direction === 1 && currentProduct) {
+        likePost(currentProduct.id).catch((e) => Alert.alert("Like failed", e.message));
+      }
+
       Animated.timing(pan, {
         toValue: {
           x: direction * 500,
@@ -202,9 +83,14 @@ export default function Index() {
       });
     };
 
+    const reload = async () => {
+        await loadPosts();
+        setCurrentIndex(0);
+    };
+
     return(
         <View style={styles.container}>
-            {!showModal && (
+            {user && (
                 <View style={styles.homeContainer}>
                     <View style={[styles.topBar, { top: insets.top + 10 }]}>
                         <Text style={styles.logo}>ReSwipe</Text>
@@ -214,7 +100,17 @@ export default function Index() {
                         </TouchableOpacity>
                     </View>
 
-                    {currentIndex < products.length ? (
+                    {loading ? (
+                        <ActivityIndicator size="large" color="#FFFFFF" />
+                    ) : error ? (
+                        <View style={styles.finishedContainer}>
+                            <Text style={styles.finishedTitle}>Could not load products</Text>
+                            <Text style={styles.finishedText}>{error}</Text>
+                            <TouchableOpacity style={styles.reloadButton} onPress={reload}>
+                                <Text style={styles.buttonText}>Try again</Text>
+                            </TouchableOpacity>
+                        </View>
+                    ) : currentProduct ? (
                         <>
                             <Animated.View
                               {...panResponder.panHandlers}
@@ -229,21 +125,21 @@ export default function Index() {
                               ]}
                             >
                                 <Image
-                                    source={products[currentIndex].image}
+                                    source={{ uri: imageUrl(currentProduct.image) }}
                                     style={styles.productImage}
                                 />
 
                                 <Text style={styles.productTitle}>
-                                    {products[currentIndex].title}
+                                    {currentProduct.title}
                                 </Text>
 
                                 <Text style={styles.price}>
-                                    {products[currentIndex].price}
+                                    {currentProduct.price}
                                 </Text>
 
-                                {products[currentIndex].location && (
+                                {currentProduct.location && (
                                     <Text style={styles.location}>
-                                        {products[currentIndex].location}
+                                        {currentProduct.location}
                                     </Text>
                                 )}
                             </Animated.View>
@@ -273,6 +169,10 @@ export default function Index() {
                             <Text style={styles.finishedText}>
                                 You have reviewed all available products.
                             </Text>
+
+                            <TouchableOpacity style={styles.reloadButton} onPress={reload}>
+                                <Text style={styles.buttonText}>Reload</Text>
+                            </TouchableOpacity>
                         </View>
                     )}
                 </View>
@@ -284,55 +184,7 @@ export default function Index() {
                 onUpload={addPost}
             />
 
-            <Modal visible={showModal} animationType="slide">
-                <View style={styles.overlay}>
-                    <View style={styles.modalContainer}>
-                        {isSignUp ? (
-                            <>
-                                <Text style={styles.title}>Create Account</Text>
-
-                                <TextInput placeholder="Username" style={styles.input}/>
-
-                                <TextInput placeholder="Email" style={styles.input}/>
-
-                                <TextInput placeholder="Password" secureTextEntry style={styles.input}/>
-
-                                <View style={styles.buttonContainer}>
-
-                                    <TouchableOpacity style={styles.button} onPress={() => setShowModal(false)} >
-                                        <Text style={styles.buttonText}>Login</Text>
-                                    </TouchableOpacity>
-
-                                    <TouchableOpacity style={styles.button} onPress={() => setIsSignUp(true)} >
-                                        <Text style={styles.buttonText}>Sign Up</Text>
-                                    </TouchableOpacity>
-
-                                </View>
-                            </>
-                        ) : (
-                            <>
-                                <Text style={styles.title}>Login</Text>
-
-                                <TextInput placeholder="Enter email ou username..." style={styles.input}/>
-
-                                <TextInput placeholder="Enter password..." secureTextEntry style={styles.input}/>
-
-                                <View style={styles.buttonContainer}>
-
-                                    <TouchableOpacity style={styles.button} onPress={() => setShowModal(false)}>
-                                        <Text style={styles.buttonText}>Login</Text>
-                                    </TouchableOpacity>
-
-                                    <TouchableOpacity style={styles.button} onPress={() => setIsSignUp(true)}>
-                                        <Text style={styles.buttonText}>Sign Up</Text>
-                                    </TouchableOpacity>
-
-                                </View>
-                            </>
-                        )}
-                    </View>
-                </View>
-            </Modal>
+            <AuthModal visible={!restoring && !user} onLoggedIn={() => setCurrentIndex(0)} />
         </View>
     );
 }
@@ -372,59 +224,17 @@ export default function Index() {
             lineHeight: 38,
         },
 
-        overlay: {
-            flex: 1,
-            backgroundColor: "rgba(0,0,0,0.4)",
-            justifyContent: "center",
-            alignItems: "center",
-        },
-
-        modalContainer: {
-            width: "85%",
-            backgroundColor: "#5B8B5E",
-            borderRadius: 15,
-            padding: 20,
-        },
-
-        title: {
-            fontSize: 24,
-            fontWeight: "bold",
-            textAlign: "center",
-            marginBottom: 20,
-        },
-
-        input: {
-            backgroundColor: "#F5F5F5",
-            borderRadius: 20,
-            paddingVertical: 12,
-            paddingHorizontal: 20,
-            marginBottom: 15,
-            color: "#000",
-        },
-
-        button: {
-            backgroundColor: "#ffffff",
-            padding: 12,
-            borderRadius: 10,
-            width: "45%",
-            alignItems: "center",
-        },
-
-        buttonContainer: {
-            flexDirection: "row",
-            justifyContent: "space-between",
-            marginTop: 15,
-        },
-
         buttonText: {
             color: "#5B8B5E",
             fontWeight: "bold",
         },
 
-        link: {
-            textAlign: "center",
-            color: "#007AFF",
-            marginTop: 15,
+        reloadButton: {
+            backgroundColor: "#ffffff",
+            paddingVertical: 12,
+            paddingHorizontal: 30,
+            borderRadius: 10,
+            marginTop: 20,
         },
 
         homeContainer: {
@@ -460,13 +270,6 @@ export default function Index() {
             borderRadius: 20,
             overflow: "hidden",
             marginTop: 20,
-        },
-
-        imagePlaceholder: {
-            height: 300,
-            backgroundColor: "#EAEAEA",
-            justifyContent: "center",
-            alignItems: "center",
         },
 
         productTitle: {
