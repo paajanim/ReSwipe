@@ -1,0 +1,3 @@
+reswipe.ipv64.de {
+	reverse_proxy api:3000
+}

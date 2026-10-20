@@ -1,15 +1,22 @@
 import React, { useState } from "react";
-import { Alert, Image, KeyboardAvoidingView, Modal, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { ActivityIndicator, Alert, Image, Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 import * as ImagePicker from "expo-image-picker";
+import { LOCATIONS } from "../config/locations";
+import Dropdown from "./Dropdown";
 
 export default function UploadModal({ visible, onClose, onUpload }) {
   const [title, setTitle] = useState("");
   const [price, setPrice] = useState("");
+  // One of the HAMK campuses, null until one is chosen
+  const [location, setLocation] = useState(null);
+  // Picked image asset ({ uri, mimeType, ... }), needed for the upload
   const [image, setImage] = useState(null);
+  const [uploading, setUploading] = useState(false);
 
   const resetForm = () => {
     setTitle("");
     setPrice("");
+    setLocation(null);
     setImage(null);
   };
 
@@ -29,7 +36,7 @@ export default function UploadModal({ visible, onClose, onUpload }) {
     });
 
     if (!result.canceled) {
-      setImage(result.assets[0].uri);
+      setImage(result.assets[0]);
     }
   };
 
@@ -38,21 +45,34 @@ export default function UploadModal({ visible, onClose, onUpload }) {
     onClose();
   };
 
-  const handleUpload = () => {
-    if (!title.trim() || !price.trim() || !image) {
-      Alert.alert("Missing information", "Please add a title, a price and an image.");
+  const handleUpload = async () => {
+    if (!title.trim() || !price.trim() || !location || !image) {
+      Alert.alert("Missing information", "Please add a title, a price, a location and an image.");
       return;
     }
 
-    onUpload({ title: title.trim(), price: `€${price.trim()}`, image });
-    resetForm();
-    onClose();
+    setUploading(true);
+
+    try {
+      await onUpload({ title: title.trim(), price: `€${price.trim()}`, location, image });
+      resetForm();
+      onClose();
+    } catch (e) {
+      Alert.alert("Upload failed", e.message);
+    } finally {
+      setUploading(false);
+    }
   };
 
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={handleCancel}>
-      <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === "ios" ? "padding" : undefined}>
-        <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+      <View style={styles.container}>
+        <ScrollView
+          contentContainerStyle={styles.content}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="interactive"
+          automaticallyAdjustKeyboardInsets
+        >
           <Text style={styles.heading}>New Post</Text>
 
           <Text style={styles.label}>TITLE</Text>
@@ -74,10 +94,18 @@ export default function UploadModal({ visible, onClose, onUpload }) {
             keyboardType="decimal-pad"
           />
 
+          <Text style={styles.label}>LOCATION</Text>
+          <Dropdown
+            options={LOCATIONS}
+            value={location}
+            onChange={setLocation}
+            placeholder="Choose a HAMK campus"
+          />
+
           <Text style={styles.label}>IMAGE</Text>
           <TouchableOpacity style={styles.imagePicker} onPress={pickImage}>
             {image ? (
-              <Image source={{ uri: image }} style={styles.image} />
+              <Image source={{ uri: image.uri }} style={styles.image} />
             ) : (
               <>
                 <Text style={styles.imagePickerPlus}>+</Text>
@@ -87,16 +115,20 @@ export default function UploadModal({ visible, onClose, onUpload }) {
           </TouchableOpacity>
 
           <View style={styles.buttonContainer}>
-            <TouchableOpacity style={styles.button} onPress={handleCancel}>
+            <TouchableOpacity style={styles.button} onPress={handleCancel} disabled={uploading}>
               <Text style={styles.buttonText}>Cancel</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity style={[styles.button, styles.uploadButton]} onPress={handleUpload}>
-              <Text style={[styles.buttonText, styles.uploadButtonText]}>Upload</Text>
+            <TouchableOpacity style={[styles.button, styles.uploadButton]} onPress={handleUpload} disabled={uploading}>
+              {uploading ? (
+                <ActivityIndicator color="#FFFFFF" />
+              ) : (
+                <Text style={[styles.buttonText, styles.uploadButtonText]}>Upload</Text>
+              )}
             </TouchableOpacity>
           </View>
         </ScrollView>
-      </KeyboardAvoidingView>
+      </View>
     </Modal>
   );
 }

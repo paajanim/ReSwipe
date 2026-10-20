@@ -1,0 +1,29 @@
+services:
+  api:
+    build: ../api
+    restart: unless-stopped
+    environment:
+      DB_PATH: /app/data/reswipe.db
+      UPLOAD_DIR: /app/uploads
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET missing, create deploy/.env}
+    volumes:
+      - data:/app/data
+      - uploads:/app/uploads
+
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp" # HTTP/3, which Caddy announces to the apps
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile
+      - caddy_data:/data
+    depends_on:
+      - api
+
+volumes:
+  data:
+  uploads:
+  caddy_data:

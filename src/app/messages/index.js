@@ -1,28 +1,35 @@
-import Constants from "expo-constants";
-import { router } from "expo-router";
+import { router, useFocusEffect } from "expo-router";
 import { SymbolView } from "expo-symbols";
-import { useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-
-// In development the phone reaches the API on the same computer that runs Expo.
-// hostUri looks like "192.168.1.20:8081" – we take the IP and use port 3000 of the API.
-const host = Constants.expoConfig?.hostUri?.split(":")[0] ?? "localhost";
-const API_URL = `http://${host}:3000`;
+import Avatar from "../../components/Avatar";
+import { apiFetch } from "../../config/api";
+import { useAuth } from "../../context/AuthContext";
 
 export default function Messages() {
   const insets = useSafeAreaInsets();
-  const [chats, setChats] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const { token } = useAuth();
+  const [chats, setChats] = useState(null);
   const [error, setError] = useState(null);
 
-  useEffect(() => {
-    fetch(`${API_URL}/chats`)
-      .then((res) => res.json())
-      .then((data) => setChats(data))
-      .catch(() => setError("Chats could not be loaded. Is the API running?"))
-      .finally(() => setLoading(false));
-  }, []);
+  // Reload every time the tab is opened, so chats from new likes show up.
+  useFocusEffect(
+    useCallback(() => {
+      if (!token) {
+        return;
+      }
+
+      apiFetch("/chats", { token })
+        .then((data) => {
+          setChats(data);
+          setError(null);
+        })
+        .catch((e) => setError(e.message));
+    }, [token])
+  );
+
+  const loading = chats === null && !error;
 
   return (
     <View style={styles.container}>
@@ -41,17 +48,23 @@ export default function Messages() {
       {error && <Text style={styles.status}>{error}</Text>}
 
       <FlatList
-        data={chats}
+        data={chats ?? []}
         keyExtractor={(item) => item.id}
         ItemSeparatorComponent={() => <View style={styles.separator} />}
+        ListEmptyComponent={
+          chats && <Text style={styles.status}>No chats yet. Like a product to start one.</Text>
+        }
         renderItem={({ item }) => (
           <Pressable
             style={({ pressed }) => [styles.row, pressed && styles.rowPressed]}
             onPress={() => router.push(`/messages/${item.id}`)}
           >
-            <View style={styles.avatar} />
+            <Avatar path={item.avatar} size={52} style={styles.avatar} />
             <View style={styles.textContainer}>
-              <Text style={styles.name}>{item.name}</Text>
+              <Text style={styles.name}>
+                {item.name}
+                <Text style={styles.postTitle}> · {item.postTitle}</Text>
+              </Text>
               <Text style={styles.lastMessage} numberOfLines={1}>
                 {item.lastMessage}
               </Text>
@@ -91,11 +104,9 @@ const styles = StyleSheet.create({
     backgroundColor: "#F2F2F2",
   },
   avatar: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
-    backgroundColor: "#C8C8CC",
     marginRight: 12,
+    borderWidth: 1,
+    borderColor: "#E0E0E0",
   },
   textContainer: {
     flex: 1,
@@ -104,6 +115,11 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: "600",
     color: "#5B8B5E",
+  },
+  postTitle: {
+    fontSize: 14,
+    fontWeight: "normal",
+    color: "#888888",
   },
   lastMessage: {
     fontSize: 14,

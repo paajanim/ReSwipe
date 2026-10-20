@@ -1,7 +1,9 @@
 import { NativeTabs } from 'expo-router/unstable-native-tabs';
+import { AuthProvider } from '../context/AuthContext';
 import { PostsProvider } from '../context/PostsContext';
 export default function Layout() {
   return (
+    <AuthProvider>
     <PostsProvider>
       <NativeTabs tintColor="#00C8B3">
 
@@ -31,5 +33,6 @@ export default function Layout() {
 
       </NativeTabs>
     </PostsProvider>
+    </AuthProvider>
   );
 }
