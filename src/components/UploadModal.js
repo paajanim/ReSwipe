@@ -1,11 +1,14 @@
 import React, { useState } from "react";
 import { ActivityIndicator, Alert, Image, Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 import * as ImagePicker from "expo-image-picker";
+import { LOCATIONS } from "../config/locations";
+import Dropdown from "./Dropdown";
 
 export default function UploadModal({ visible, onClose, onUpload }) {
   const [title, setTitle] = useState("");
   const [price, setPrice] = useState("");
-  const [location, setLocation] = useState("");
+  // One of the HAMK campuses, null until one is chosen
+  const [location, setLocation] = useState(null);
   // Picked image asset ({ uri, mimeType, ... }), needed for the upload
   const [image, setImage] = useState(null);
   const [uploading, setUploading] = useState(false);
@@ -13,7 +16,7 @@ export default function UploadModal({ visible, onClose, onUpload }) {
   const resetForm = () => {
     setTitle("");
     setPrice("");
-    setLocation("");
+    setLocation(null);
     setImage(null);
   };
 
@@ -43,15 +46,15 @@ export default function UploadModal({ visible, onClose, onUpload }) {
   };
 
   const handleUpload = async () => {
-    if (!title.trim() || !price.trim() || !image) {
-      Alert.alert("Missing information", "Please add a title, a price and an image.");
+    if (!title.trim() || !price.trim() || !location || !image) {
+      Alert.alert("Missing information", "Please add a title, a price, a location and an image.");
       return;
     }
 
     setUploading(true);
 
     try {
-      await onUpload({ title: title.trim(), price: `€${price.trim()}`, location: location.trim(), image });
+      await onUpload({ title: title.trim(), price: `€${price.trim()}`, location, image });
       resetForm();
       onClose();
     } catch (e) {
@@ -92,12 +95,11 @@ export default function UploadModal({ visible, onClose, onUpload }) {
           />
 
           <Text style={styles.label}>LOCATION</Text>
-          <TextInput
-            style={styles.input}
+          <Dropdown
+            options={LOCATIONS}
             value={location}
-            onChangeText={setLocation}
-            placeholder="City (optional)"
-            placeholderTextColor="#888"
+            onChange={setLocation}
+            placeholder="Choose a HAMK campus"
           />
 
           <Text style={styles.label}>IMAGE</Text>

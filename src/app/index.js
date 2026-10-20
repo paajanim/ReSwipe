@@ -1,18 +1,28 @@
 import React, { useMemo, useState, useRef } from "react";
 import { ActivityIndicator, Alert, StyleSheet, Text, View, TouchableOpacity, Image, Animated, PanResponder, } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { SymbolView } from "expo-symbols";
 import AuthModal from "../components/AuthModal";
+import FilterModal from "../components/FilterModal";
 import UploadModal from "../components/UploadModal";
 import { imageUrl } from "../config/api";
 import { useAuth } from "../context/AuthContext";
 import { usePosts } from "../context/PostsContext";
+import { EMPTY_FILTER, isFilterActive, matchesFilter } from "../utils/filter";
 
 export default function Index() {
     const [showUpload, setShowUpload] = useState(false);
+    const [showFilter, setShowFilter] = useState(false);
+    // New key on every open, so the filter sheet starts from the active filter.
+    const [filterKey, setFilterKey] = useState(0);
+    const [filter, setFilter] = useState(EMPTY_FILTER);
     const { user, restoring } = useAuth();
     const { posts, loading, error, loadPosts, addPost, likePost } = usePosts();
     // Own posts are not shown in the swipe stack (they are in the profile).
-    const products = posts.filter((post) => post.username !== user?.username);
+    const products = posts.filter(
+        (post) => post.username !== user?.username && matchesFilter(post, filter)
+    );
+    const filterActive = isFilterActive(filter);
     const insets = useSafeAreaInsets();
 
     const [currentIndex, setCurrentIndex] = useState(0);
@@ -88,11 +98,32 @@ export default function Index() {
         setCurrentIndex(0);
     };
 
+    const openFilter = () => {
+        setFilterKey((key) => key + 1);
+        setShowFilter(true);
+    };
+
+    // A new filter starts the stack from the beginning.
+    const applyFilter = (newFilter) => {
+        setFilter(newFilter);
+        setCurrentIndex(0);
+        setShowFilter(false);
+    };
+
     return(
         <View style={styles.container}>
             {user && (
                 <View style={styles.homeContainer}>
                     <View style={[styles.topBar, { top: insets.top + 10 }]}>
+                        <TouchableOpacity style={styles.filterButton} onPress={openFilter} hitSlop={8}>
+                            <SymbolView
+                                name={{ ios: "slider.horizontal.3", android: "tune", web: "tune" }}
+                                tintColor="#E6F0B8"
+                                size={28}
+                            />
+                            {filterActive && <View style={styles.filterDot} />}
+                        </TouchableOpacity>
+
                         <Text style={styles.logo}>ReSwipe</Text>
 
                         <TouchableOpacity style={styles.plusButton} onPress={() => setShowUpload(true)}>
@@ -160,6 +191,20 @@ export default function Index() {
                                 </TouchableOpacity>
                             </View>
                         </>
+                    ) : filterActive && products.length === 0 ? (
+                        <View style={styles.finishedContainer}>
+                            <Text style={styles.finishedTitle}>
+                                No products match your filter
+                            </Text>
+
+                            <Text style={styles.finishedText}>
+                                Try other campuses or a wider price range.
+                            </Text>
+
+                            <TouchableOpacity style={styles.reloadButton} onPress={() => applyFilter(EMPTY_FILTER)}>
+                                <Text style={styles.buttonText}>Reset filter</Text>
+                            </TouchableOpacity>
+                        </View>
                     ) : (
                         <View style={styles.finishedContainer}>
                             <Text style={styles.finishedTitle}>
@@ -182,6 +227,14 @@ export default function Index() {
                 visible={showUpload}
                 onClose={() => setShowUpload(false)}
                 onUpload={addPost}
+            />
+
+            <FilterModal
+                key={filterKey}
+                visible={showFilter}
+                filter={filter}
+                onApply={applyFilter}
+                onClose={() => setShowFilter(false)}
             />
 
             <AuthModal visible={!restoring && !user} onLoggedIn={() => setCurrentIndex(0)} />
@@ -210,6 +263,25 @@ export default function Index() {
             right: 0,
             alignItems: "center",
             justifyContent: "center",
+        },
+
+        filterButton: {
+            position: "absolute",
+            left: 20,
+            padding: 5,
+        },
+
+        // Shows that a filter is active
+        filterDot: {
+            position: "absolute",
+            top: 2,
+            right: 0,
+            width: 10,
+            height: 10,
+            borderRadius: 5,
+            backgroundColor: "#00C8B3",
+            borderWidth: 1.5,
+            borderColor: "#5B8B5E",
         },
 
         plusButton: {
