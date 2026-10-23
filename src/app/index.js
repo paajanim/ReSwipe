@@ -17,9 +17,12 @@ export default function Index() {
     // New key on every open, so the filter sheet starts from the active filter.
     const [filterKey, setFilterKey] = useState(0);
     const [filter, setFilter] = useState(EMPTY_FILTER);
+    //* Access authenticated user information
     const { user, restoring } = useAuth();
+    //* Access posts loaded from the API
     const { posts, loading, error, loadPosts, addPost, likePost } = usePosts();
-    // Own posts are not shown in the swipe stack (they are in the profile).
+    //* Remove posts created by the logged-in user and
+    //* apply the selected filters before showing cards.
     const products = posts.filter(
         (post) => post.username !== user?.username && matchesFilter(post, filter)
     );
@@ -28,7 +31,7 @@ export default function Index() {
 
     const [currentIndex, setCurrentIndex] = useState(0);
 
-    // Created once and kept for the whole screen (state instead of a ref, so it can be used while rendering).
+    //* Created once and kept for the whole screen (state instead of a ref, so it can be used while rendering).
     const [pan] = useState(() => new Animated.ValueXY());
 
     const rotation = pan.x.interpolate({
@@ -37,6 +40,7 @@ export default function Index() {
       extrapolate: "clamp",
     });
 
+    //* Increase button size according to swipe direction
     const likeScale = pan.x.interpolate({
       inputRange: [0, 150],
       outputRange: [1, 1.4],
@@ -49,6 +53,7 @@ export default function Index() {
       extrapolate: "clamp",
     });
 
+    //* Visual feedback gradients during swipe
     const likeOpacity = pan.x.interpolate({
       inputRange: [0, 150],
       outputRange: [0, 1],
@@ -61,6 +66,7 @@ export default function Index() {
       extrapolate: "clamp",
     });
 
+    // Trigger card animation from the action buttons.
     const handleLike = () => {
       swipeCard(1);
     };
@@ -69,6 +75,7 @@ export default function Index() {
       swipeCard(-1);
     };
 
+    //* Product currently displayed on screen
     const currentProduct = products[currentIndex];
 
     // Re-created for every card, so a swipe always likes the card that is shown.
@@ -103,9 +110,11 @@ export default function Index() {
     const swipeCard = (direction) => {
       // Like = chat with the seller is created on the server (nothing happens for own posts).
       if (direction === 1 && currentProduct) {
+        //* Create a conversation when a post receives a like
         likePost(currentProduct.id).catch((e) => Alert.alert("Like failed", e.message));
       }
 
+      // Animate the card out of the screen in the selected direction
       Animated.timing(pan, {
         toValue: {
           x: direction * 500,
@@ -114,11 +123,13 @@ export default function Index() {
         duration: 300,
         useNativeDriver: false,
       }).start(() => {
+        // Reset card position and load the next product
         pan.setValue({ x: 0, y: 0 });
         setCurrentIndex((prev) => prev + 1);
       });
     };
 
+    // Reload products from the API and restart the card stack
     const reload = async () => {
         await loadPosts();
         setCurrentIndex(0);
@@ -189,6 +200,7 @@ export default function Index() {
                                 { opacity: likeOpacity },
                               ]}
                             >
+                            // Green overlay for like action
                               <LinearGradient
                                   colors={["transparent", "rgba(0,255,0,0.9)"]}
                                   start={{ x: 0, y: 0 }}
@@ -204,6 +216,8 @@ export default function Index() {
                                 { opacity: dislikeOpacity },
                               ]}
                             >
+
+                            // Red overlay for dislike action
                               <LinearGradient
                                 colors={["rgba(255,0,0,0.8)", "transparent"]}
                                 start={{ x: 0, y: 0 }}
@@ -212,6 +226,7 @@ export default function Index() {
                               />
                             </Animated.View>
 
+                                // Product image retrieved from the backend API
                                 <Image
                                     source={{ uri: imageUrl(currentProduct.image) }}
                                     style={styles.productImage}
@@ -251,6 +266,7 @@ export default function Index() {
                                   transform: [{ scale: likeScale }],
                                 }}
                               >
+                                // Like product and create conversation
                                 <TouchableOpacity
                                   style={styles.likeButton}
                                   onPress={handleLike}
@@ -293,12 +309,14 @@ export default function Index() {
                 </View>
             )}
 
+            // Used to create and upload new products
             <UploadModal
                 visible={showUpload}
                 onClose={() => setShowUpload(false)}
                 onUpload={addPost}
             />
 
+            // Used to filter products (campus, price)
             <FilterModal
                 key={filterKey}
                 visible={showFilter}
@@ -307,6 +325,7 @@ export default function Index() {
                 onClose={() => setShowFilter(false)}
             />
 
+            // Login/Register modal shown when the user is not authenticated
             <AuthModal visible={!restoring && !user} onLoggedIn={() => setCurrentIndex(0)} />
         </View>
     );

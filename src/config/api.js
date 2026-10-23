@@ -16,7 +16,7 @@ export const imageFile = (asset) => new File(asset.uri);
 // and throws an Error with the message from the API if the request fails.
 export async function apiFetch(path, { token, body, method } = {}) {
   const headers = {};
-  let payload = body;
+  let payload = bod;
 
   if (token) {
     headers.Authorization = `Bearer ${token}`;
